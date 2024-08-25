@@ -21,7 +21,7 @@ if __name__ == "__main__":
     #
     dir_prefix = "tutorials"
     setenv_path = os.path.join(f"dev_scripts_{dir_prefix}", "thin_client",
-                               f"setenv.${dir_prefix}.sh")
+                               f"setenv.{dir_prefix}.sh")
     # This is a super-repo which has `helpers` as sub-repo.
     has_subrepo = True
     tcu.create_tmux_session(
