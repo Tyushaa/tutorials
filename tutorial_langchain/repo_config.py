@@ -34,7 +34,7 @@ def _print(msg: str) -> None:
 
 # To customize: xyz
 #_REPO_NAME = "xyz"
-_REPO_NAME = "tutorial_data_science"
+_REPO_NAME = "tutorial_langchain"
 
 # To customize: xyz
 _GITHUB_REPO_ACCOUNT = "causify-ai"
