@@ -5,17 +5,18 @@ description = ""
 authors = ["GP Saggese <gp@kaizen-tech.io>"]
 
 [tool.poetry.dependencies]
+chromadb = "*"
+faiss-cpu = "*"
+invoke = "*"
 jupyter = "*"
 jupytext = "*"
 langchain = "*"
 langchain-core = "*"
 langchain-community = "*"
-openai = "*"
 langchain-openai = "*"
-faiss-cpu = "*"
-chromadb = "*"
 matplotlib = "*"
 numpy = "*"
+openai = "*"
 pandas = ">= 2.1.1"
 psutil = "*"               # Is this needed?
 pyarrow = "*"
@@ -29,10 +30,7 @@ python = ">= 3.12, < 4.0"
 python-dotenv = "*"        # Is this needed?
 requests = "*"             # Is this needed?
 scikit-learn = "*"
-seaborn = "*"
-statsmodels = "*"
 tqdm = "*"
-invoke = "*"
 s3fs = "*"
 
 [tool.poetry.dev-dependencies]
