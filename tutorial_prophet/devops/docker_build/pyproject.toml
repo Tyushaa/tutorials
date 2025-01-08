@@ -25,6 +25,7 @@ python = ">= 3.12, < 4.0"
 python-dotenv = "*"        # Is this needed?
 requests = "*"             # Is this needed?
 scikit-learn = "*"
+seaborn = "*"
 tqdm = "*"
 s3fs = "*"
 
