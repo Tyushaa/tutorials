@@ -384,16 +384,16 @@ fig.show()
 
 # %%
 # Calculate metrics
-mae = metrics.mean_absolute_error(forecast['y'], forecast['yhat'])
-rmse = metrics.mean_squared_error(forecast['y'], forecast['yhat'])
-mape = (abs(forecast['y'] - forecast['yhat']) / forecast['y']).mean() * 100
+mae = metrics.mean_absolute_error(oos_forecast['y'], oos_forecast['yhat'])
+rmse = metrics.mean_squared_error(oos_forecast['y'], oos_forecast['yhat'])
+mape = (abs(oos_forecast['y'] - oos_forecast['yhat']) / oos_forecast['y']).mean() * 100
 
 _LOG.info("MAE=%s, RMSE=%s, MAPE=%s", mae, rmse, mape)
 
 # %% [markdown]
 # # Cross Validation
 #
-# `cross_validation` method does not take in the dataset as input so the cross validation is done on the data 
+# `cross_validation` method does not take in the dataset as input so the cross validation is done on the data used in `model.fit()`
 #
 # - Sliding Window Approach:
 #
