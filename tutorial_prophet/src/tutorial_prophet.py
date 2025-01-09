@@ -393,6 +393,8 @@ _LOG.info("MAE=%s, RMSE=%s, MAPE=%s", mae, rmse, mape)
 # %% [markdown]
 # # Cross Validation
 #
+# `cross_validation` method does not take in the dataset as input so the cross validation is done on the data 
+#
 # - Sliding Window Approach:
 #
 # The historical dataset is split into multiple training and testing sets using a sliding window approach.
