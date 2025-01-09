@@ -423,7 +423,7 @@ df_cv = diagnostics.cross_validation(
 
 
 # %%
-df_perf = performance_metrics(df_cv)
+df_perf = diagnostics.performance_metrics(df_cv)
 _LOG.info(hpanda.df_to_str(df_perf, log_level=logging.INFO))
 
 # %%
@@ -432,3 +432,5 @@ df_cv.head()
 # %%
 # Plot Mean Absolute Percentage Error (MAPE)
 fig = plo.plot_cross_validation_metric(df_cv, metric='mape')
+
+# %%
