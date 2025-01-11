@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.4
+#       jupytext_version: 1.16.6
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -14,26 +14,58 @@
 # ---
 
 # # Tutorial For Langchain
+#
+# The notebook shows how to use langchain API with an example. In this example we will be building chatbot for the internal documentation using lancgchain.
+#
+# Refernces: 
+#  - Official docs : https://python.langchain.com/docs/introduction/
 
+# ## Imports
+
+# %load_ext autoreload
+# %autoreload 2
+# %matplotlib inline
+
+# +
 import os
-os.environ["OPENAI_API_KEY"] = ""
+import glob
+import logging
+
+import langchain_openai as langOpenAI
+import langchain.document_loaders as docloader
+import langchain.docstore.document as docstore
+import langchain.text_splitter as txtsplitter
+import langchain.embeddings as lang_embeddings
+import langchain.vectorstores as vectorstores
+import langchain.chains as chains
+import langchain.chat_models as chatmodels
+
+from typing import List
+
+import helpers.hsystem as hsystem
+import helpers.hprint as hprint
+import helpers.hdbg as hdbg
+import helpers.hpandas as hpanda
+
+
+
+# +
+hdbg.init_logger(verbosity=logging.INFO)
+
+_LOG = logging.getLogger(__name__)
+# -
 
 # ### Define the GPT Model to use.
 
 # +
-from langchain_openai import ChatOpenAI
-from typing import List
-import glob
+os.environ["OPENAI_API_KEY"] = "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"
 
-chat_model = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
-
-# +
-from langchain.document_loaders import TextLoader
-from langchain.docstore.document import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+chat_model = langOpenAI.ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
 
 
-def parse_markdown_files(file_paths) -> List[Document]:
+# -
+
+def parse_markdown_files(file_paths) -> List[docstore.Document]:
     """
     Parse all the markdown files into Documents.
 
@@ -44,39 +76,21 @@ def parse_markdown_files(file_paths) -> List[Document]:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         # Create a Document object for each file
-        documents.append(Document(page_content=content, metadata={"source": file_path}))
+        documents.append(docstore.Document(page_content=content, metadata={"source": file_path}))
     return documents
 
 
-# -
+def list_markdown_files(directory:str) -> List[str]:
+    return list(glob.glob(f"{directory}/*.md"))
+
 
 # ### RecursiveCharacterTextSplitter 
 # Utility function in LangChain  for splitting large chunks of text into smaller more manageable pieces while ensuring minimal overlap or fragmentation of meaningful content.
 #
-# ### Key Features
-# 1. **Recursive Splitting**: 
-#    - It splits the text hierarchically using multiple delimiters. The splitting process starts with the most significant delimiter (e.g., paragraph breaks) and progressively moves to less significant ones (e.g., sentence breaks, word breaks).
-#    - This ensures that the text is split cleanly and logically, retaining semantic coherence as much as possible.
-#
-# 2. **Customizable Delimiters**:
-#    - You can specify a list of delimiters (e.g., `\n\n`, `. `, `, `) for the splitting process.
-#    - The splitter uses these in order, falling back to smaller units if a larger split would result in chunks exceeding the maximum size.
-#
-# 3. **Chunk Size and Overlap**:
-#    - `chunk_size`: The maximum length of each text chunk, typically measured in characters.
-#    - `chunk_overlap`: The number of characters to overlap between consecutive chunks. This helps in preserving context when chunks are processed individually.
-#
-# 4. **Text Preprocessing**:
-#    - Trims unnecessary whitespace around chunks.
-#    - Ensures no chunk exceeds the defined `chunk_size`.
-#
 
 # +
-def list_markdown_files(directory):
-    return list(glob.glob(f"{directory}/*.md"))
-
 # Directory containing Markdown files
-directory = "../docs"
+directory = "../../docs"
 
 # List Markdown files
 markdown_files = list_markdown_files(directory)
@@ -85,13 +99,13 @@ markdown_files = list_markdown_files(directory)
 documents = parse_markdown_files(markdown_files)
 
 # Split long documents into smaller chunks
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+text_splitter = txtsplitter.RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 split_documents = text_splitter.split_documents(documents)
 
 # Print sample chunked documents
 for doc in split_documents[:5]:
-    print(f"Source: {doc.metadata['source']}")
-    print(f"Content: {doc.page_content}\n")
+    _LOG.info("Source: %s", {doc.metadata['source']})
+    _LOG.info("Content: %s", {doc.page_content})
 # -
 
 # ### VECTOR STORES
@@ -99,28 +113,19 @@ for doc in split_documents[:5]:
 # #### FAISS (Facebook AI Similarity Search) 
 # It is a library designed for efficient similarity search and clustering of dense vectors. In LangChain, FAISS is commonly used as a vector store to store and retrieve embeddings, which are vector representations of text or other data.
 #
-# #### Key Features of FAISS Vector Stores:
-# 1. Efficient Storage and Search: FAISS stores dense vector embeddings and allows fast retrieval using similarity metrics like cosine similarity or inner product.
-# 2. Indexing Options: Supports different types of indexes (e.g., Flat, IVF, HNSW) to balance between accuracy and speed depending on the dataset size and search requirements.
 
 # +
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-
 # Initialize embeddings
-embeddings = OpenAIEmbeddings()
+embeddings = lang_embeddings.OpenAIEmbeddings()
 
 # Embed and store split_documents
-vector_store = FAISS.from_documents(split_documents, embeddings)
+vector_store = vectorstores.FAISS.from_documents(split_documents, embeddings)
 
 retriever = vector_store.as_retriever()
-
-# +
-from langchain.chains import RetrievalQA
-from langchain.chat_models import ChatOpenAI
+# -
 
 # Create the QA chain
-qa_chain = RetrievalQA.from_chain_type(
+qa_chain = chains.RetrievalQA.from_chain_type(
     llm=chat_model,
     retriever=retriever,
     return_source_documents=True
@@ -135,59 +140,87 @@ query = "What are the guidelines on creating new project"
 result = qa_chain({"query": query})
 
 # Print the answer
-print("Answer:")
-print(result['result'])
+_LOG.info("Answer: %s", result['result'])
 
 # Print the source file references
-print("\nSource Documents:")
+_LOG.info("\nSource Documents:")
 for doc in result['source_documents']:
-    print(f"File: {doc.metadata['source']}")
-    print(f"Excerpt: {doc.page_content[:200]}...")
+    _LOG.info("File: %s", {doc.metadata['source']})
+    _LOG.info("Excerpt: %s", {doc.page_content[:200]})
 
 
-# +
-# Retrieve vectors by document name
-def get_vectors_by_document_name(vector_store, document_name):
-    # Query using the metadata field `source`
+# -
+
+def get_vectors_by_document_name(vector_store: vectorstores.FAISS, document_name: str) -> List:
+    """
+    Retrieve vectors from a FAISS vector store based on the document name.
+
+    :param vector_store: FAISS vector store object that supports similarity search.
+    :param document_name:  name of the document used as a filter in the metadata.
+
+    :return: list of results from the FAISS vector store that match the given document name.
+    """
+    # Query using the metadata field source
     results = vector_store.similarity_search(
-        query="",  # Pass an empty query or a dummy vector if supported
-        k=None,    # Retrieve all matching documents
-        filter={"source": document_name}  # Filter by the document name
+        # Pass an empty query or a dummy vector if supported
+        query="",
+        # Retrieve all matching documents
+        k=None,
+        # Filter by the document name
+        filter={"source": document_name} 
     )
     return results
 
+
+
+# +
 # Example usage
 document_name = "all.how_write_tutorials.how_to_guide.md"
 results = get_vectors_by_document_name(vector_store, document_name)
 
 # Print results
 for doc in results:
-    print(f"File: {doc.metadata['source']}")
-    print(f"Content: {doc.page_content[:200]}...")
+    _LOG.info("File: %s", {doc.metadata['source']})
+    _LOG.info("Content: %s", {doc.page_content[:200]})
 # -
 
 # ### Demo to create a documentation QA bot but the docs can be updated or deleted.
 
+# Initialize some state.
 vector_store = None
 folder = "../docs"
 filename_to_md5sum = {}
 
-import helpers.hsystem as hsystem
-# Function to parse and structure Markdown files. 
-def parse_markdown_files(file_paths):
+# +
+from typing import List
+from langchain.schema import Document
+
+def parse_markdown_files(file_paths: List[str]) -> List[Document]:
+    """
+    Parse and structure Markdown files into LangChain Document objects.
+
+    :param file_paths: list of file paths to the Markdown files
+
+    :return: list of Document objects, where each document contains the content
+                        of a Markdown file and metadata with the file's source path.
+    """
     documents = []
+    filename_to_md5sum = {}
     for file_path in file_paths:
+        # Read the content of the Markdown file
         with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+            content = f.read()       
+        # Compute the MD5 checksum of the file
         md5sum, _ = hsystem.system_to_string(f"md5sum {file_path}")[1].split()
-        filename_to_md5sum[file_path] = md5sum
+        filename_to_md5sum[file_path] = md5sum 
         # Create a Document object for each file
         documents.append(Document(page_content=content, metadata={"source": file_path}))
+    
     return documents
 
 
-# +
-from langchain.vectorstores import Chroma
+
+# -
 
 def create_vector_store_from_markdown_files(folder):
     # List Markdown files
@@ -195,14 +228,12 @@ def create_vector_store_from_markdown_files(folder):
     # Parse Markdown files into LangChain documents
     documents = parse_markdown_files(markdown_files)
     # Split long documents into smaller chunks
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    text_splitter = txtsplitter.RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     split_documents = text_splitter.split_documents(documents)
     # Create embeddings for all documents.
-    vector_store = Chroma.from_documents(split_documents, embeddings)
+    vector_store = vectorstores.Chroma.from_documents(split_documents, embeddings)
     return vector_store
 
-
-# -
 
 def get_changes_in_documents_folder(folder):
     # List Markdown files
@@ -229,7 +260,7 @@ def update_files_in_vector_store(vector_store, files):
     vector_store.delete(ids_to_delete)
     documents = parse_markdown_files(files)
     # Split long documents into smaller chunks
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    text_splitter = txtsplitter.RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     split_documents = text_splitter.split_documents(documents)
     texts = [doc.page_content for doc in split_documents]
     embeddings_list = embeddings.embed_documents(texts)  # Compute embeddings for multiple documents
@@ -248,10 +279,10 @@ if vector_store:
     vector_store = update_files_in_vector_store(vector_store, changes["modified"])
 else:
     vector_store = create_vector_store_from_markdown_files(folder)
-    
+
 
 # Create the QA chain
-qa_chain = RetrievalQA.from_chain_type(
+qa_chain = chains.RetrievalQA.from_chain_type(
     llm=chat_model,
     retriever=retriever,
     return_source_documents=True
@@ -262,14 +293,13 @@ qa_chain = RetrievalQA.from_chain_type(
 result = qa_chain({"query": query})
 
 # Print the answer
-print("Answer:")
-print(result['result'])
+_LOG.info("Answer: %s", result['result'])
 
 # Print the source file references
-print("\nSource Documents:")
+_LOG.info("\nSource Documents:")
 for doc in result['source_documents']:
-    print(f"File: {doc.metadata['source']}")
-    print(f"Excerpt: {doc.page_content[:200]}...")
+    _LOG.info("File: %s", {doc.metadata['source']})
+    _LOG.info("Excerpt: %s", {doc.page_content[:200]})
 # -
 
 
