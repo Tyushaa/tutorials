@@ -1,0 +1,16 @@
+time="2025-01-09T06:14:38Z" level=warning msg="The \"CSFY_FORCE_TEST_FAIL\" variable is not set. Defaulting to a blank string."
+time="2025-01-09T06:14:38Z" level=warning msg="The \"CSFY_AWS_ACCESS_KEY_ID\" variable is not set. Defaulting to a blank string."
+time="2025-01-09T06:14:38Z" level=warning msg="The \"CSFY_AWS_DEFAULT_REGION\" variable is not set. Defaulting to a blank string."
+time="2025-01-09T06:14:38Z" level=warning msg="The \"CSFY_AWS_SECRET_ACCESS_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-01-09T06:14:38Z" level=warning msg="The \"OPENAI_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-01-09T06:14:38Z" level=warning msg="The \"CSFY_TELEGRAM_TOKEN\" variable is not set. Defaulting to a blank string."
+time="2025-01-09T06:14:38Z" level=warning msg="The \"CSFY_CI\" variable is not set. Defaulting to a blank string."
+time="2025-01-09T06:14:38Z" level=warning msg="/data/sonaalk/src/tutorials1/tutorial_prophet/devops/compose/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+IS_SUPER_REPO=1
+##> devops/docker_run/entrypoint.sh
+UID=1027
+GID=998
+GIT_ROOT_DIR=/src
+> source /src/helpers_root/dev_scripts_helpers/thin_client/thin_client_utils.sh ...
+ERROR: Can't find /src/helpers_root/dev_scripts_helpers/thin_client/thin_client_utils.sh
+/app/devops/docker_run/entrypoint.sh: line 31: /src/helpers_root/dev_scripts_helpers/thin_client/thin_client_utils.sh: No such file or directory
