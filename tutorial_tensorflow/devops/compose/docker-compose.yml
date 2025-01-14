@@ -39,11 +39,11 @@ services:
     extends: base_app
     volumes:
       - /data/sonaalk/src/tutorials1:/app
-    working_dir: /app/tutorial_prophet
+    working_dir: /app/tutorial_tensorflow
   linter:
     extends: base_app
     volumes:
-      - /data/sonaalk/src/tutorials1/tutorial_prophet:/src
+      - /data/sonaalk/src/tutorials1/tutorial_tensorflow:/src
       - ../../:/app
     working_dir: /src
     environment:

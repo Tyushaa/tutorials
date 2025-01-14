@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "tutorial_prophet"
+name = "tutorial_tensorflow"
 version = "0.1.0"
 description = ""
 authors = ["GP Saggese <gp@kaizen-tech.io>"]
@@ -12,7 +12,6 @@ matplotlib = "*"
 numpy = "*"
 pandas = ">= 2.1.1"
 plotly = "*"
-prophet = "*"
 pyarrow = "*"
 pytest = "*"
 pytest-cov = "*"
@@ -25,6 +24,8 @@ scikit-learn = "*"
 seaborn = "*"
 tqdm = "*"
 s3fs = "*"
+tensorflow-probability = "*"
+tf-keras = "*"
 
 [tool.poetry.dev-dependencies]
 
