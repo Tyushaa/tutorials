@@ -78,7 +78,7 @@ config = {
         "weekly_amp_cos": 2.5,
         # List of holidays and their impact.
         "holidays_dates": ['2020-12-25', '2021-12-25', '2022-12-25', "2023-12-25", "2024-12-25"],
-        "holidays_impact": 2.5,
+        "holidays_impact" : 0.25,
         # Autoregression params.
         "ar_order": 1,
         "phi": 0.7,
@@ -130,6 +130,8 @@ df.set_index("ds")["y"].plot(title="Original data", ylabel="Target variable", xl
 # ## Plotting Helpers
 
 # %%
+# It is used to register date converters with Matplotlib. 
+# This ensures that Matplotlib can properly handle and plot date-related data.
 pdp.register_matplotlib_converters()
 sns.set_context("notebook", font_scale=1.)
 sns.set_style("whitegrid")
@@ -180,9 +182,12 @@ def plot_forecast(
         label="forecast",
     )
     ax.fill_between(
+        # x-axis values (e.g., time steps or forecast points)
         forecast_steps,
+        # Lower boundary of the confidence interval
         forecast_mean - 2 * forecast_scale,
-        forecast_mean + 2 * forecast_scale,
+        # Upper boundary of the confidence interval
+        forecast_mean + 2 * forecast_scale, 
         color=c2,
         alpha=0.2,
     )
@@ -311,6 +316,9 @@ end_date_filter = df["ds"] <= config["train_end_date"]
 df_train = df[start_date_filter & end_date_filter]
 _LOG.info(hpanda.df_to_str(df_train, log_level=logging.INFO))
 
+
+
+# %%
 start_date_filter = df["ds"] >= config["test_start_date"]
 end_date_filter = df["ds"] <= config["test_end_date"]
 df_test = df[start_date_filter & end_date_filter].reset_index(drop=True)
@@ -321,7 +329,7 @@ _LOG.info(hpanda.df_to_str(df_test, log_level=logging.INFO))
 # ## Model and Fitting
 
 # %%
-def build_model(observed_time_series: np.ndarray) -> tfp.sts.Sum:
+def build_model(observed_time_series: np.ndarray, holiday_features: np.ndarray) -> tfp.sts.Sum:
     """
     Build a Structural Time Series (STS) model for forecasting.
 
@@ -345,6 +353,12 @@ def build_model(observed_time_series: np.ndarray) -> tfp.sts.Sum:
         observed_time_series=observed_time_series,
         name="autoregressive",
     )
+    # Using example of holiday indicators https://www.tensorflow.org/probability/api_docs/python/tfp/sts/LinearRegression
+    holiday_effect = tfp.sts.LinearRegression(
+         design_matrix=holiday_features,
+         name='holiday_effect'
+    )
+    
     # Combine components into a single model
     model = tfp.sts.Sum(
         [trend, day_of_week_effect, autoregressive],
@@ -355,7 +369,18 @@ def build_model(observed_time_series: np.ndarray) -> tfp.sts.Sum:
 
 
 # %%
-model = build_model(df_train["y"].to_numpy())
+# Generate a date range for the entire period
+all_dates = pd.date_range(start=config["train_start_date"], end=config["train_end_date"])
+# Extract holiday dates from the configuration
+holiday_dates = pd.to_datetime(config["data"]["holidays_dates"])
+holiday_features = np.isin(all_dates, holiday_dates).astype(float)
+holiday_indicators = np.zeros((len(all_dates), len(holiday_dates)))
+for i, holiday in enumerate(holiday_dates):
+    holiday_indicators[:, i] = (all_dates == holiday).astype(int)
+_LOG.info("holdiay features = %s, shape = %s", holiday_indicators, holiday_indicators.shape)
+
+# %%
+model = build_model(df_train["y"].to_numpy(), holiday_indicators)
 
 # %% [markdown]
 # ## Background
@@ -439,21 +464,58 @@ plt.show()
 # Draw samples from the variational posterior.
 q_samples_ = variational_posteriors.sample(50)
 
+# %% [markdown]
+# ### Explanation of Parameters and Outputs:
+#
+# #### 1. **`LocalLinearTrend/_level_scale` and `LocalLinearTrend/_slope_scale`**
+#    - **Definition**: These represent the variability (or uncertainty) in the level and slope of the local linear trend in the time series. 
+#      - **Level scale** (`_level_scale`): Refers to the variability or noise in the level of the trend component in the Local Linear Trend model. 
+#      - **Slope scale** (`_slope_scale`): Reflects variability in the rate of change (or slope) of the trend.
+# #### 2. **`day_of_week_effect/_drift_scale`**
+#    - **Definition**: Represents the variability in the day-of-week effects (e.g., systematic variations in the time series that recur weekly). 
+#    - **Seasonality Model**: Unlike Prophet, which models seasonality using Fourier terms (sine and cosine functions), this implementation likely uses a simpler drift-based approach. 
+#      
+# #### 3. **`autoregressive/_level_scale`**
+#    - **Definition**: Represents the noise scale or variability at the level of the autoregressive (AR) process. 
+#    - **Autoregressive Model**: This parameter reflects how much the AR process deviates from the expected trajectory defined by its coefficients.
+#      - Higher values of `_level_scale` indicate a noisier AR process, whereas lower values suggest that the process closely follows the AR coefficients.
+#
+
 # %%
 _LOG.info("Inferred parameters:")
 for param in model.parameters:
   _LOG.info("%s: %s +- %s", param.name,
-                              np.mean(q_samples_demand_[param.name], axis=0),
-                              np.std(q_samples_demand_[param.name], axis=0))
+                              np.mean(q_samples_[param.name], axis=0),
+                              np.std(q_samples_[param.name], axis=0))
+
+# %%
+_LOG.info("True Trend slope = %s, Predicted Trend slope =%s", config["data"]["slope"], np.mean(q_samples_["LocalLinearTrend/_slope_scale"]))
+
+# %%
+# Build a dict mapping components to distributions over
+# their contribution to the observed signal.
+component_dists = tfp.sts.decompose_by_component(
+    model,
+    observed_time_series=df_train["y"].to_numpy(),
+    parameter_samples=q_samples_)
+
+# %%
+component_means_, component_stddevs_ = (
+    {k.name: c.mean() for k, c in component_dists.items()},
+    {k.name: c.stddev() for k, c in component_dists.items()})
+
+# %%
+_ = plot_components(df_train["ds"], component_means_, component_stddevs_,
+                    x_locator=None, x_formatter=None)
 
 # %%
 # Forecast the prediction.
 forecast_dist = tfp.sts.forecast(
     model=model,
     observed_time_series=df_train["y"].to_numpy(),
-    parameter_samples=q_samples_demand_,
+    parameter_samples=q_samples_,
     num_steps_forecast=len(df_test))
-     
+
 
 # %%
 num_samples=10
@@ -468,7 +530,7 @@ num_samples=10
     )
 
 # %%
-fig, ax = plot_forecast(df["ds"], df["y"].to_numpy(),
+fig, ax = plot_forecast(df_test["ds"], df_test["y"].to_numpy(),
                         forecast_mean,
                         forecast_scale,
                         forecast_samples,
@@ -477,21 +539,14 @@ fig, ax = plot_forecast(df["ds"], df["y"].to_numpy(),
 fig.tight_layout()
 
 # %%
-# Build a dict mapping components to distributions over
-# their contribution to the observed signal.
-component_dists = tfp.sts.decompose_by_component(
-    model,
-    observed_time_series=df_test["y"].to_numpy(),
-    parameter_samples=q_samples_)
+# Calculate residuals
+residuals = df_test["y"].to_numpy() - forecast_mean
 
-# %%
-co2_component_means_, co2_component_stddevs_ = (
-    {k.name: c.mean() for k, c in component_dists.items()},
-    {k.name: c.stddev() for k, c in component_dists.items()})
-
-# %%
-_ = plot_components(df_test["ds"], co2_component_means_, co2_component_stddevs_,
-                    x_locator=None, x_formatter=None)
+# Q-Q Plot for Residuals
+plt.figure(figsize=(10, 5))
+stats.probplot(residuals, dist="norm", plot=plt)
+plt.title("Q-Q Plot of Residuals")
+plt.show()
 
 # %% [markdown]
 # ## Performance Metric
@@ -501,5 +556,7 @@ mae = metrics.mean_absolute_error(df_test["y"].to_numpy(), forecast_mean)
 _LOG.info("Mean Absolute Error (MAE): %s", mae)
 mse = metrics.mean_squared_error(df_test["y"].to_numpy(), forecast_mean)
 _LOG.info("Mean Squared Error (MSE): %s", mse)
+
+# %%
 
 # %%
