@@ -73,9 +73,8 @@ config = {
         # Linear trend params.
         "slope": 0.005,
         "intercept": 15,
-        # Fourier term params for seasonality component.
-        "weekly_amp_sin": 5.0,
-        "weekly_amp_cos": 2.5,
+        # params for random walk,
+        "drift_scale" : 0.5,
         # List of holidays and their impact.
         "holidays_dates": ['2020-12-25', '2021-12-25', '2022-12-25', "2023-12-25", "2024-12-25"],
         "holidays_impact" : 0.25,
@@ -97,19 +96,21 @@ print(config)
 # # Generate data
 
 # %%
+np.random.seed(config["data"]["seed"])
 # Generate date range.
 dates = pd.date_range(start=config["train_start_date"], end=config["test_end_date"], freq='D')
 time = np.arange(len(dates))
 # Define linear trend.
 y_trend = config["data"]["slope"] * time + config["data"]["intercept"]
 # Define the seasonality factor.
-p_weekly = 7
-y_weekly_seasonality = config["data"]["weekly_amp_sin"] * np.sin(2 * np.pi * time / p_weekly) + config["data"]["weekly_amp_cos"] * np.cos(2 * np.pi * time / p_weekly)
+seasonality_factor = 7
+# Generate seasonal effects with drift
+for t in range(p_weekly, len(dates)):
+    y_trend[t] = y_trend[t - seasonality_factor] + np.random.normal(0, config["data"]["drift_scale"])
 # Define holidays impact.
 holiday_effect = np.zeros(len(dates))
 holiday_effect[np.isin(dates.date, pd.to_datetime(config["data"]["holidays_dates"]).date)] = config["data"]["holidays_impact"]
 # Define white noise.
-np.random.seed(config["data"]["seed"])
 noise = np.random.normal(loc=0, scale=config["data"]["noise_sigma"], size=len(time))
 # Add autoregressive behavior.
 y = np.zeros(len(time))
@@ -490,6 +491,9 @@ for param in model.parameters:
 
 # %%
 _LOG.info("True Trend slope = %s, Predicted Trend slope =%s", config["data"]["slope"], np.mean(q_samples_["LocalLinearTrend/_slope_scale"]))
+
+# %%
+_LOG.info("True Sesonality drift  = %s, Predicted Seasonality drift =%s", config["data"]["drift_scale"], np.mean(q_samples_["day_of_week_effect/_drift_scale"]))
 
 # %%
 # Build a dict mapping components to distributions over
