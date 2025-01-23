@@ -74,7 +74,7 @@ config = {
         "slope": 0.005,
         "intercept": 15,
         # params for random walk,
-        "drift_scale" : 0.5,
+        "seasonal_drift_scale" : 0.5,
         # List of holidays and their impact.
         "holidays_dates": ['2020-12-25', '2021-12-25', '2022-12-25', "2023-12-25", "2024-12-25"],
         "holidays_impact" : 0.25,
@@ -83,10 +83,12 @@ config = {
         "phi": 0.7,
         # Noise std.
         "seed": 42,
-        "noise_sigma": 2.0,
+        "observational_noise_sigma": 2.0,
     },
     "model": {
-       "learning_rate": 0.1,
+        "num_seasons": 7,
+        "num_steps_per_season":1,
+        "learning_rate": 0.1,
         "num_steps": 200,
     },
 }
@@ -105,18 +107,24 @@ y_trend = config["data"]["slope"] * time + config["data"]["intercept"]
 # Define the seasonality factor.
 seasonality_factor = 7
 # Generate seasonal effects with drift
-for t in range(p_weekly, len(dates)):
-    y_trend[t] = y_trend[t - seasonality_factor] + np.random.normal(0, config["data"]["drift_scale"])
+for t in range(seasonality_factor, len(dates), seasonality_factor):
+    y_trend[t] = y_trend[t - seasonality_factor] + np.random.normal(0, config["data"]["seasonal_drift_scale"])
+# # Generate seasonal effects with drift
+# seasonal_effects = np.zeros(len(dates))
+# for t in range(seasonality_factor, len(dates), seasonality_factor):
+#     seasonal_effects[t] = seasonal_effects[t - seasonality_factor] + np.random.normal(
+#         0, config["data"]["seasonal_drift_scale"]
+#     )
 # Define holidays impact.
 holiday_effect = np.zeros(len(dates))
 holiday_effect[np.isin(dates.date, pd.to_datetime(config["data"]["holidays_dates"]).date)] = config["data"]["holidays_impact"]
 # Define white noise.
-noise = np.random.normal(loc=0, scale=config["data"]["noise_sigma"], size=len(time))
+noise = np.random.normal(loc=0, scale=config["data"]["observational_noise_sigma"], size=len(time))
 # Add autoregressive behavior.
 y = np.zeros(len(time))
-y[0] = y_trend[0] + y_weekly_seasonality[0] + holiday_effect[0] + noise[0]
+y[0] = y_trend[0] + holiday_effect[0] + noise[0] 
 for i in range(1, len(time)):
-    y[i] = config["data"]["phi"] * y[i-1] + y_trend[i] + y_weekly_seasonality[i] + holiday_effect[i] + noise[i]
+    y[i] = config["data"]["phi"] * y[i-1] + y_trend[i] + holiday_effect[i] + noise[i]
 df = pd.DataFrame({"ds": dates, "y": y})
 # Add lagged value of the target as a feature.
 df["y.lag1"] = df["y"].shift(1)
@@ -183,11 +191,11 @@ def plot_forecast(
         label="forecast",
     )
     ax.fill_between(
-        # x-axis values (e.g., time steps or forecast points)
+        # x-axis values (e.g., time steps or forecast points).
         forecast_steps,
-        # Lower boundary of the confidence interval
+        # Lower boundary of the confidence interval.
         forecast_mean - 2 * forecast_scale,
-        # Upper boundary of the confidence interval
+        # Upper boundary of the confidence interval.
         forecast_mean + 2 * forecast_scale, 
         color=c2,
         alpha=0.2,
@@ -240,7 +248,7 @@ def plot_components(
     for i, component_name in enumerate(component_means_dict.keys()):
         component_mean = component_means_dict[component_name]
         component_stddev = component_stddevs_dict[component_name]
-
+        #
         ax = fig.add_subplot(num_components, 1, 1 + i)
         ax.plot(dates, component_mean, lw=2)
         ax.fill_between(
@@ -262,62 +270,14 @@ def plot_components(
 
 
 
-# %%
-def plot_one_step_predictive(
-    dates: np.ndarray,
-    observed_time_series: np.ndarray,
-    one_step_mean: np.ndarray,
-    one_step_scale: np.ndarray,
-    *,
-    x_locator: Optional[plt.Locator] = None,
-    x_formatter: Optional[plt.Formatter] = None,
-) -> Tuple[plt.Figure, plt.Axes]:
-    """
-    Plot a time series against a model's one-step predictions.
-
-    :param dates: Array of dates corresponding to the time series.
-    :param observed_time_series: Array of observed values in the time series.
-    :param one_step_mean: Array of one-step-ahead predicted mean values.
-    :param one_step_scale: Array of one-step-ahead predicted scale (standard deviation).
-    :param x_locator: Optional locator for the x-axis (e.g., for dates).
-    :param x_formatter: Optional formatter for the x-axis labels.
-    :return: A tuple containing the figure and axes objects of the plot.
-    """
-    colors = sns.color_palette()
-    c1, c2 = colors[0], colors[1]
-    #
-    fig = plt.figure(figsize=(12, 6))
-    ax = fig.add_subplot(1, 1, 1)
-    ax.plot(dates, observed_time_series, label="observed time series", color=c1)
-    ax.plot(dates, one_step_mean, label="one-step prediction", color=c2)
-    ax.fill_between(
-        dates,
-        one_step_mean - one_step_scale,
-        one_step_mean + one_step_scale,
-        alpha=0.1,
-        color=c2,
-    )
-    ax.legend()
-    #
-    if x_locator is not None:
-        ax.xaxis.set_major_locator(x_locator)
-        ax.xaxis.set_major_formatter(x_formatter)
-        fig.autofmt_xdate()
-    fig.tight_layout()
-    return fig, ax
-
-
-
 # %% [markdown]
 # ## Tran and Test Split
 
 # %%
 start_date_filter = df["ds"] >= config["train_start_date"]
 end_date_filter = df["ds"] <= config["train_end_date"]
-df_train = df[start_date_filter & end_date_filter]
+df_train = df[start_date_filter & end_date_filter].reset_index(drop=True)
 _LOG.info(hpanda.df_to_str(df_train, log_level=logging.INFO))
-
-
 
 # %%
 start_date_filter = df["ds"] >= config["test_start_date"]
@@ -344,8 +304,8 @@ def build_model(observed_time_series: np.ndarray, holiday_features: np.ndarray) 
     """
     trend = tfp.sts.LocalLinearTrend(observed_time_series=observed_time_series)
     day_of_week_effect = tfp.sts.Seasonal(
-        num_seasons=7,
-        num_steps_per_season=1,
+        num_seasons=config["model"]["num_seasons"],
+        num_steps_per_season=config["model"]["num_steps_per_season"],
         observed_time_series=observed_time_series,
         name="day_of_week_effect",
     )
@@ -355,6 +315,7 @@ def build_model(observed_time_series: np.ndarray, holiday_features: np.ndarray) 
         name="autoregressive",
     )
     # Using example of holiday indicators https://www.tensorflow.org/probability/api_docs/python/tfp/sts/LinearRegression
+    # TODO(Sonaal) : Adding holiday_effect in model is throwing some error during forecast. 
     holiday_effect = tfp.sts.LinearRegression(
          design_matrix=holiday_features,
          name='holiday_effect'
@@ -362,7 +323,7 @@ def build_model(observed_time_series: np.ndarray, holiday_features: np.ndarray) 
     
     # Combine components into a single model
     model = tfp.sts.Sum(
-        [trend, day_of_week_effect, autoregressive],
+        [trend, day_of_week_effect, autoregressive, holiday_effect],
         observed_time_series=observed_time_series,
     )
     return model
@@ -370,12 +331,13 @@ def build_model(observed_time_series: np.ndarray, holiday_features: np.ndarray) 
 
 
 # %%
-# Generate a date range for the entire period
-all_dates = pd.date_range(start=config["train_start_date"], end=config["train_end_date"])
-# Extract holiday dates from the configuration
+# Generate a date range for the entire period.
+all_dates = pd.date_range(start=config["train_start_date"], end=config["test_end_date"])
+# Extract holiday dates from the configuration.
 holiday_dates = pd.to_datetime(config["data"]["holidays_dates"])
 holiday_features = np.isin(all_dates, holiday_dates).astype(float)
 holiday_indicators = np.zeros((len(all_dates), len(holiday_dates)))
+# For each date we create a one hot vector.
 for i, holiday in enumerate(holiday_dates):
     holiday_indicators[:, i] = (all_dates == holiday).astype(int)
 _LOG.info("holdiay features = %s, shape = %s", holiday_indicators, holiday_indicators.shape)
@@ -426,9 +388,7 @@ model = build_model(df_train["y"].to_numpy(), holiday_indicators)
 #
 # 2. **Seasonal Components**:
 #    - These capture periodic patterns, such as weekly or yearly cycles.
-#    - Common parameters:
-#      - **Amplitude**: The strength of the seasonal effect.
-#      - **Period**: The length of the season (e.g., 7 for weekly seasonality).
+#    
 #    
 # 3. **Autoregressive Parameters**:
 #    - These capture dependencies between time steps.
@@ -459,7 +419,12 @@ elbo_loss_curve = tfp.vi.fit_surrogate_posterior(
     optimizer=tf_keras.optimizers.Adam(learning_rate=config["model"]["learning_rate"]),
     num_steps=num_variational_steps,
     jit_compile=True)
-plt.plot(elbo_loss_curve)
+plt.plot(elbo_loss_curve, label="ELBO Loss Curve")
+plt.xlabel("Optimization Steps")
+plt.ylabel("ELBO Loss")
+plt.title("Variational Optimization Progress")
+plt.legend()
+plt.grid(True)
 plt.show()
 
 # Draw samples from the variational posterior.
@@ -490,10 +455,12 @@ for param in model.parameters:
                               np.std(q_samples_[param.name], axis=0))
 
 # %%
-_LOG.info("True Trend slope = %s, Predicted Trend slope =%s", config["data"]["slope"], np.mean(q_samples_["LocalLinearTrend/_slope_scale"]))
+#TODO(Sonaal): We can't directly compare `_slope_scale` with slope as `_slope_scale` is basically slope noise.
+# Can we find a way to model actual data parameters.
 
 # %%
-_LOG.info("True Sesonality drift  = %s, Predicted Seasonality drift =%s", config["data"]["drift_scale"], np.mean(q_samples_["day_of_week_effect/_drift_scale"]))
+# TODO(Sonaal): The true seasonal_drift_scale is not in 95% confidence internval. Need to investigate why is that.
+_LOG.info("True Sesonality drift  = %s, Predicted Seasonality drift =%s", config["data"]["seasonal_drift_scale"], np.mean(q_samples_["day_of_week_effect/_drift_scale"]))
 
 # %%
 # Build a dict mapping components to distributions over
@@ -545,6 +512,15 @@ fig.tight_layout()
 # %%
 # Calculate residuals
 residuals = df_test["y"].to_numpy() - forecast_mean
+plt.figure(figsize=(10, 6))
+plt.plot(df_test["ds"], residuals, label="Residuals", color="blue")
+plt.axhline(0, color="red", linestyle="--", label="Zero Line")
+plt.title("Residuals Over Time")
+plt.xlabel("Date")
+plt.ylabel("Residuals")
+plt.legend()
+plt.grid(True)
+plt.show()
 
 # Q-Q Plot for Residuals
 plt.figure(figsize=(10, 5))
@@ -560,7 +536,5 @@ mae = metrics.mean_absolute_error(df_test["y"].to_numpy(), forecast_mean)
 _LOG.info("Mean Absolute Error (MAE): %s", mae)
 mse = metrics.mean_squared_error(df_test["y"].to_numpy(), forecast_mean)
 _LOG.info("Mean Squared Error (MSE): %s", mse)
-
-# %%
 
 # %%
