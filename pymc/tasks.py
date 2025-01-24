@@ -41,7 +41,7 @@ default_params = {
     # different image, e.g., `XYZ_tmp` to not interfere with the prod system.
     # "BASE_IMAGE": "xyz",
     "BASE_IMAGE": "pymc",
-    "helpers_IMAGE_PROD": f"{CK_ECR_BASE_PATH}/helpers:prod",
+    "HELPERS_IMAGE_PROD": f"{CK_ECR_BASE_PATH}/helpers:prod",
 }
 
 
