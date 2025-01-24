@@ -21,7 +21,6 @@ if [[ ! -f $SOURCE_PATH ]]; then
     kill -INT $$
 fi
 source $SOURCE_PATH
-dassert_dir_exists $GIT_ROOT_DIR/.git
 
 # - Activate venv.
 activate_docker_venv
@@ -30,6 +29,7 @@ activate_docker_venv
 dassert_var_defined "CSFY_IS_SUPER_REPO"
 dassert_var_defined "CSFY_GIT_ROOT_PATH"
 dassert_var_defined "CSFY_HELPERS_ROOT_PATH"
+
 if [[ $CSFY_IS_SUPER_REPO == 1 ]]; then
     dassert_dir_exists $CSFY_HELPERS_ROOT_PATH
 fi;
