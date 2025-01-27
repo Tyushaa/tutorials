@@ -5,12 +5,11 @@
 # use bash and doesn't have +x permissions.
 #
 
-DIR_TAG="tutorial_openai"
+DIR_TAG="tutorial_data_science"
 
 # NOTE: We can't use $0 to find out in which file we are in, since this file is
 # sourced and not executed.
-SCRIPT_PATH="tutorial_openai/dev_scripts_${DIR_TAG}/thin_client/setenv.sh"
-
+SCRIPT_PATH="tutorial_data_science/dev_scripts_${DIR_TAG}/thin_client/setenv.sh"
 echo "##> $SCRIPT_PATH"
 
 # To customize: xyz
@@ -59,7 +58,7 @@ fi;
 # - PATH
 
 # Set vars for this dir.
-DEV_SCRIPT_DIR="${GIT_ROOT_DIR}/tutorial_openai/dev_scripts_${DIR_TAG}"
+DEV_SCRIPT_DIR="${GIT_ROOT_DIR}/tutorial_data_science/dev_scripts_${DIR_TAG}"
 echo "DEV_SCRIPT_DIR=$DEV_SCRIPT_DIR"
 dassert_dir_exists $DEV_SCRIPT_DIR
 
