@@ -110,7 +110,7 @@
   developers on Causify.AI) contribute to a project
 
 - Setup your working environment by following the instructions in the
-  [document](/docs/onboarding/intern.set_up_development_on_laptop.how_to_guide.md)
+  [document](https://github.com/causify-ai/helpers/blob/master/docs/onboarding/intern.set_up_development_on_laptop.how_to_guide.md)
 
 - Each step of the project is delivered by committing code to the dir
   corresponding to your project and doing a GitHub Pull Request (PR)
