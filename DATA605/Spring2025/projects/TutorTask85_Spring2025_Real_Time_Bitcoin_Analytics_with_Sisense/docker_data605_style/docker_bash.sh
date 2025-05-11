@@ -4,6 +4,12 @@ REPO_NAME=umd_data605
 IMAGE_NAME=umd_data605_template
 FULL_IMAGE_NAME="${REPO_NAME}/${IMAGE_NAME}"
 
+# ⏱️ Pre-clean any existing container with this name
+if docker ps -aq --filter "name=^/${IMAGE_NAME}$" | grep -q .; then
+  echo "Found existing container '${IMAGE_NAME}', stopping & removing it…"
+  docker rm -f "${IMAGE_NAME}"
+fi
+
 # Verify the image exists
 docker image ls "${FULL_IMAGE_NAME}"
 
