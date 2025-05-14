@@ -283,3 +283,33 @@ def forecast_sarimax(results, steps: int) -> pd.DataFrame:
     return df
 
 
+# TECHNICAL INDICATORS
+def compute_macd(df: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.DataFrame:
+    """Compute MACD and signal line."""
+    ema_fast   = df['price_usd'].ewm(span=fast, adjust=False).mean()
+    ema_slow   = df['price_usd'].ewm(span=slow, adjust=False).mean()
+    macd_line  = ema_fast - ema_slow
+    signal_line= macd_line.ewm(span=signal, adjust=False).mean()
+    hist       = macd_line - signal_line
+    return pd.DataFrame({'macd': macd_line, 'signal': signal_line, 'histogram': hist}, index=df.index)
+
+def compute_bollinger_bands(df: pd.DataFrame, window: int = 20, num_std: int = 2) -> pd.DataFrame:
+    """Calculate Bollinger Bands."""
+    rolling_mean = df['price_usd'].rolling(window).mean()
+    rolling_std  = df['price_usd'].rolling(window).std()
+    upper_band   = rolling_mean + (rolling_std * num_std)
+    lower_band   = rolling_mean - (rolling_std * num_std)
+    return pd.DataFrame({'bb_mean': rolling_mean, 'bb_upper': upper_band, 'bb_lower': lower_band}, index=df.index)
+
+def compute_rsi(df: pd.DataFrame, window: int = 14) -> pd.Series:
+    """Compute Relative Strength Index (RSI)."""
+    delta = df['price_usd'].diff()
+    gain  = delta.where(delta > 0, 0.0)
+    loss  = -delta.where(delta < 0, 0.0)
+    avg_gain = gain.ewm(alpha=1/window, min_periods=window).mean()
+    avg_loss = loss.ewm(alpha=1/window, min_periods=window).mean()
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
+
