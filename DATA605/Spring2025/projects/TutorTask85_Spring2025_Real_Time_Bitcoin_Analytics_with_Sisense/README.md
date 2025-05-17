@@ -1,77 +1,126 @@
 # Real-Time Bitcoin Analytics with Sisense
 
-This project implements a real-time data ingestion and analytics system for Bitcoin using Sisense. It fetches live and historical Bitcoin data from the CryptoCompare API, processes it with Python, stores it in PostgreSQL, and visualizes it through interactive Sisense dashboards to deliver actionable insights, including price trends and forecasts.
+This project implements a real-time data ingestion and analytics system for Bitcoin using Sisense. It fetches live and historical Bitcoin data from the CryptoCompare API, processes it with Python, stores it in PostgreSQL, and visualizes it through interactive Sisense dashboards to deliver actionable insights, including price trends, forecasts, and technical indicators.
+
+## Project Overview
+
+The system combines data ingestion, processing, time series forecasting, and visualization to provide a robust analytics pipeline for Bitcoin (BTC/USD) data. It uses Docker for consistent deployment, Python for data manipulation, and Sisense for interactive dashboards, making it modular and extensible.
 
 ## Technologies Used
 
 - **Sisense**: Business intelligence platform for data visualization and analytics.
-- **Python**: Core language for data ingestion, processing, and analysis.
-- **PostgreSQL**: Database for storing Bitcoin data.
+- **Python**: Core language for data ingestion, processing, and analysis (3.8+ recommended).
+- **PostgreSQL**: Relational database for storing Bitcoin data.
 - **CryptoCompare API**: Source for real-time and historical Bitcoin price data.
 - **Pandas**: Library for data manipulation and structuring.
-- **Statsmodels**: Library for time series analysis and forecasting.
-- **SQLAlchemy**: For database interactions in Python.
-- **Requests**: For API calls to fetch Bitcoin data.
-- **python-dotenv**: For managing environment variables.
+- **Statsmodels**: Library for time series forecasting (e.g., SARIMAX).
+- **SQLAlchemy**: ORM and SQL toolkit for database interactions.
+- **Requests**: HTTP library for API calls.
+- **python-dotenv**: For managing environment variables securely.
+- **Docker**: Containerization for consistent deployment and execution.
 
 ## Project Structure
 
-- **`bitcoin_analysis_utils.py`**: Utility module with functions for fetching data from the CryptoCompare API, managing the PostgreSQL database, performing time series forecasting (SARIMAX), and calculating technical indicators (MACD, Bollinger Bands, RSI).
-- **`bitcoin_analysis_API.ipynb`**: Jupyter notebook demonstrating how to fetch and process Bitcoin data using the utility functions.
-- **`bitcoin_analysis_examples.ipynb`**: Jupyter notebook showcasing examples of data analysis, forecasting, and visualization preparation.
+- **`bitcoin_analysis_utils.py`**: Utility module with functions for:
+  - Fetching data from the CryptoCompare API.
+  - Managing PostgreSQL database connections.
+  - Performing SARIMAX forecasting.
+  - Calculating technical indicators (MACD, Bollinger Bands, RSI).
+- **`bitcoin_analysis_API.ipynb`**: Jupyter notebook demonstrating data fetching and processing using utility functions, including SARIMAX forecasting.
+- **`bitcoin_analysis_examples.ipynb`**: Jupyter notebook with examples of data analysis, forecasting, and preparation for Sisense visualization.
+- **`indicators.ipynb`**: Jupyter notebook for calculating and storing technical indicators in PostgreSQL:
+  - **MACD**: 12-day and 26-day EMAs with a 9-day signal line, stored in `bitcoin_macd`.
+  - **RSI**: 14-day window, stored in `bitcoin_rsi`.
+  - **Bollinger Bands**: 20-day moving average with 2 standard deviations, stored in `bitcoin_bb`.
+- **`docker_data605_style/`**: Directory with Docker-related files:
+  - `Dockerfile`: Defines the Docker image.
+  - `bashrc`: Custom bash configuration for the container.
+  - `docker_bash.sh`: Launches a container with an interactive shell, mounting the project directory at `/data` and exposing port 8888.
+  - `docker_build.sh`: Builds the `umd_data605_template` image using Docker BuildKit.
+  - `docker_build.version.log`: Logs build versions.
+  - `docker_clean.sh`: Cleans up containers and images.
+  - `docker_exec.sh`: Executes commands in a running container.
+  - `docker_jupyter.sh`: Runs a Jupyter notebook server in the container.
+  - `docker_name.sh`: Manages container naming.
+  - `docker_push.sh`: Pushes the image to a repository.
+  - `etc_sudoers`: Configures sudo privileges in the container.
+  - `install_jupyter_extensions.sh`: Installs Jupyter extensions.
+  - `run_jupyter.sh`: Starts the Jupyter server.
+  - `version.sh`: Manages version information.
+- **`.gitignore`**: Excludes unnecessary files (e.g., `__pycache__`, checkpoints).
+- **`.ipynb_checkpoints/`**: Contains Jupyter notebook checkpoints.
+- **`__pycache__/`**: Contains Python bytecode files.
+- **`docker_build.log`**: Logs Docker build processes.
 
 ## Data Ingestion
 
-- **Source**: CryptoCompare API provides minute-level and daily-level Bitcoin price data (BTC/USD).
+- **Source**: CryptoCompare API provides minute-level and daily-level Bitcoin price data.
 - **Historical Data**: Fetched in chunks (e.g., 2 days of minute data or 365 days of daily data) and stored in PostgreSQL.
-- **Real-Time Data**: Periodically fetched (e.g., last 24 hours of minute data) and appended to the database to keep it current.
+- **Real-Time Data**: Fetched periodically (e.g., last 24 hours of minute data) or live per minute and appended to the database.
 
 ## Data Processing and Analysis
 
-- **Cleaning and Structuring**: Raw data is processed using Pandas for consistency and usability.
-- **Time Series Forecasting**: SARIMAX models from Statsmodels forecast future Bitcoin prices based on historical daily data.
-- **Technical Indicators**: Computed indicators include:
-  - **MACD**: Moving Average Convergence Divergence for trend analysis.
-  - **Bollinger Bands**: Volatility bands around a moving average.
-  - **RSI**: Relative Strength Index for momentum insights.
+- **Cleaning and Structuring**: Raw data is processed with Pandas for consistency.
+- **Time Series Forecasting**: SARIMAX models from Statsmodels forecast Bitcoin prices using historical daily data.
+- **Technical Indicators**: Calculated in `indicators.ipynb` and stored in PostgreSQL:
+  - **MACD**: Tracks trend direction and momentum.
+  - **RSI**: Measures price momentum.
+  - **Bollinger Bands**: Indicates volatility.
 
 ## Visualization in Sisense
 
-- **Dashboards**: Display real-time Bitcoin prices, historical trends, and forecasted prices.
-- **Interactivity**: Users can filter by date ranges and compare forecasts with historical data.
-- **Data Flow**: Processed data from PostgreSQL is integrated into Sisense for visualization.
+- **Dashboards**: Show real-time prices, historical trends, forecasts, and technical indicators.
+- **Interactivity**: Users can filter by date ranges and compare data.
+- **Data Flow**: Processed data from PostgreSQL is imported into Sisense.
 
 ## Setup and Installation
 
-1. **Install Dependencies**:
+### Prerequisites
 
-   - Ensure Python 3.8+ is installed.
-   - Install required libraries:
-     ```
-     pip install requests pandas statsmodels sqlalchemy python-dotenv
-     ```
+- CryptoCompare API key (free tier at [CryptoCompare](https://min-api.cryptocompare.com/)).
+- Running PostgreSQL database instance.
+- Python 3.8+.
+- Docker installed.
+- Basic knowledge of Python, SQL, Jupyter, Sisense, and Docker.
 
-2. **Set Up Environment Variables**:
+### Install Dependencies
 
-   - Create a `.env` file in the project root with:
+1. Install Python libraries:
+   ```
+   pip install requests pandas statsmodels sqlalchemy python-dotenv
+   ```
+
+2. Set up environment variables:
+   - Create a `.env` file in the project root:
      ```
      API_KEY=your_cryptocompare_api_key
      DATABASE_URL=your_postgresql_database_url
      ```
-   - Obtain a free API key from [CryptoCompare](https://min-api.cryptocompare.com/).
    - Use a PostgreSQL connection string (e.g., `postgresql://user:password@localhost:5432/dbname`).
 
-3. **Run the Project**:
-   - Start your PostgreSQL database.
-   - Open and run `bitcoin_analysis_API.ipynb` to fetch and store data.
-   - Use `bitcoin_analysis_examples.ipynb` to analyze data and prepare it for Sisense.
-   - Import the processed data into Sisense for dashboard creation.
+### Run the Project
 
-## Prerequisites
+1. Start your PostgreSQL database.
+2. Build the Docker image:
+   ```
+   ./docker_data605_style/docker_build.sh
+   ```
+3. Launch a container:
+   ```
+   ./docker_data605_style/docker_bash.sh
+   ```
+4. Inside the container, run the Jupyter notebooks:
+   - `bitcoin_analysis_API.ipynb`: Fetch and store data.
+   - `bitcoin_analysis_examples.ipynb`: Analyze and prepare data for Sisense.
+   - `indicators.ipynb`: Calculate and store technical indicators.
+5. Import PostgreSQL data into Sisense for visualization.
 
-- A CryptoCompare API key (free tier available).
-- A running PostgreSQL database instance.
-- Basic familiarity with Python, SQL, Jupyter notebooks, and Sisense.
+## Docker Usage
+
+- **Build Image**: `./docker_build.sh` creates `umd_data605_template`.
+- **Run Container**: `./docker_bash.sh` starts a container with the project mounted at `/data`.
+- **Jupyter Server**: `./docker_jupyter.sh` runs a notebook server.
+- **Clean Up**: `./docker_clean.sh` removes unused containers/images.
 
 ## Useful Resources
 
@@ -81,7 +130,10 @@ This project implements a real-time data ingestion and analytics system for Bitc
 - [Statsmodels Documentation](https://www.statsmodels.org/stable/index.html)
 - [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
 - [Python-dotenv Documentation](https://saurabh-kumar.com/python-dotenv/)
+- [Docker Documentation](https://docs.docker.com/)
 
 ## Notes
 
-- **Sisense Licensing**: Sisense offers a free trial, but a paid subscription may be required for full functionality. Check for academic or educational discounts.
+- **Sisense Licensing**: Free trial available; full features may require a subscription.
+- **Recent Updates**: Live minute fetch and technical indicator calculations added recently.
+
