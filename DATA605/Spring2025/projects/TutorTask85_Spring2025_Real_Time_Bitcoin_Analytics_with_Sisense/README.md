@@ -73,6 +73,9 @@ The system combines data ingestion, processing, time series forecasting, and vis
 - **Interactivity**: Users can filter by date ranges and compare data.
 - **Data Flow**: Processed data from PostgreSQL is imported into Sisense.
 
+![Data Pipeline Diagram](images/Data_pipeline.png)  
+*Data Pipeline Diagram illustrating the workflow of the Real-Time Bitcoin Analytics with Sisense project.*
+
 ## Setup and Installation
 
 ### Prerequisites
@@ -136,4 +139,3 @@ The system combines data ingestion, processing, time series forecasting, and vis
 
 - **Sisense Licensing**: Free trial available; full features may require a subscription.
 - **Recent Updates**: Live minute fetch and technical indicator calculations added recently.
-
